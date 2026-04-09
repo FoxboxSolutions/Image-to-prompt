@@ -16,7 +16,9 @@ export async function generatePrompt(
   const prompt = `${SYSTEM_PROMPTS[preset]} The output must be in ${language}. Generate an optimized AI image prompt based on this image.`;
 
   try {
-    const response = await fetch("/api/ai/llava", {
+    const apiUrl = "/api/ai/llava";
+    console.log(`Calling AI API: ${apiUrl}`);
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -28,8 +30,15 @@ export async function generatePrompt(
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to generate prompt");
+      const errorText = await response.text();
+      let errorMessage = "Failed to generate prompt";
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        errorMessage = `Server error (${response.status}): ${errorText.substring(0, 100)}...`;
+      }
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();

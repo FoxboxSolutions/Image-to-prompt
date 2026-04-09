@@ -9,15 +9,30 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: '10mb' }));
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+  });
+
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // API routes
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    console.log("Health check hit");
+    res.json({ status: "ok", env: process.env.NODE_ENV });
   });
 
   app.post("/api/ai/llava", async (req, res) => {
+    if (typeof fetch === 'undefined') {
+      return res.status(500).json({ error: "Fetch is not available in this Node environment. Please upgrade Node or install node-fetch." });
+    }
     const { image, prompt } = req.body;
+    console.log("LLaVA API hit", { 
+      hasImage: !!image, 
+      imageLength: image?.length,
+      prompt: prompt 
+    });
     const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
     const apiToken = process.env.CLOUDFLARE_API_TOKEN;
 

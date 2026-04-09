@@ -20,8 +20,14 @@ export default function App() {
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [apiStatus, setApiStatus] = useState<"checking" | "online" | "offline">("checking");
 
-  // Load history from localStorage
+  // Check API health
+  useEffect(() => {
+    fetch("/api/health")
+      .then(res => res.ok ? setApiStatus("online") : setApiStatus("offline"))
+      .catch(() => setApiStatus("offline"));
+  }, []);
   useEffect(() => {
     const saved = localStorage.getItem("prompt_history");
     if (saved) {
@@ -117,10 +123,20 @@ export default function App() {
             <a href="#" className="hover:text-primary transition-colors">Presets</a>
             <a href="#" className="hover:text-primary transition-colors">FAQ</a>
           </nav>
-          <Button variant="outline" size="sm" className="rounded-full">
-            <Globe className="w-4 h-4 mr-2" />
-            EN
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted/50 text-[10px] font-medium">
+              <div className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                apiStatus === "online" ? "bg-green-500 animate-pulse" : 
+                apiStatus === "offline" ? "bg-red-500" : "bg-yellow-500"
+              )} />
+              API: {apiStatus.toUpperCase()}
+            </div>
+            <Button variant="outline" size="sm" className="rounded-full">
+              <Globe className="w-4 h-4 mr-2" />
+              EN
+            </Button>
+          </div>
         </div>
       </header>
 
