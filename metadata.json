@@ -1,0 +1,5 @@
+{
+  "name": "PromptVision AI",
+  "description": "Transform images into optimized AI prompts for Midjourney, Flux, and Stable Diffusion in seconds.",
+  "requestFramePermissions": ["camera"]
+}
