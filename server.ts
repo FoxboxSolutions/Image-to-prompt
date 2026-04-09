@@ -1,14 +1,60 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.use(express.json({ limit: '10mb' }));
+
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  app.post("/api/ai/llava", async (req, res) => {
+    const { image, prompt } = req.body;
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+
+    if (!accountId || !apiToken) {
+      return res.status(500).json({ 
+        error: "Cloudflare credentials not configured. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in the Secrets panel." 
+      });
+    }
+
+    try {
+      // Convert base64 to Uint8Array as expected by Cloudflare AI
+      const base64Data = image.split(",")[1] || image;
+      const binaryData = Buffer.from(base64Data, 'base64');
+      const uint8Array = new Uint8Array(binaryData);
+
+      const response = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/llava-hf/llava-1.5-7b-hf`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            image: Array.from(uint8Array),
+            prompt: prompt,
+            max_tokens: 512,
+          }),
+        }
+      );
+
+      const result = await response.json();
+      res.json(result);
+    } catch (error) {
+      console.error("Cloudflare AI Error:", error);
+      res.status(500).json({ error: "Failed to process image with Cloudflare AI" });
+    }
   });
 
   // Vite middleware for development

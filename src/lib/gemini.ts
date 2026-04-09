@@ -1,7 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
-
 export type ModelPreset = "Midjourney" | "Flux" | "Stable Diffusion" | "General";
 
 const SYSTEM_PROMPTS: Record<ModelPreset, string> = {
@@ -17,33 +13,33 @@ export async function generatePrompt(
   preset: ModelPreset,
   language: string = "English"
 ) {
-  const systemInstruction = `${SYSTEM_PROMPTS[preset]} The output must be in ${language}.`;
+  const prompt = `${SYSTEM_PROMPTS[preset]} The output must be in ${language}. Generate an optimized AI image prompt based on this image.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              data: imageData.split(",")[1], // Remove prefix
-              mimeType: mimeType,
-            },
-          },
-          {
-            text: "Generate an optimized AI image prompt based on this image.",
-          },
-        ],
+    const response = await fetch("/api/ai/llava", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-      },
+      body: JSON.stringify({
+        image: imageData,
+        prompt: prompt,
+      }),
     });
 
-    return response.text;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to generate prompt");
+    }
+
+    const result = await response.json();
+    
+    // Cloudflare LLaVA response structure is usually { result: { description: "..." } } or similar
+    // Based on the user's snippet, it returns the model response directly.
+    // Usually it's { result: { description: "..." } } or { result: "..." }
+    return result.result?.description || result.result || "No description generated.";
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("AI Service Error:", error);
     throw error;
   }
 }
